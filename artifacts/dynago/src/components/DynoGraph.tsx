@@ -76,7 +76,7 @@ export default function DynoGraph({ result, highlightRpm }: DynoGraphProps) {
 
         // Y-axis label
         ctx.fillStyle = LABEL_COLOR;
-        ctx.font = `${9 * dpr}px Inter, system-ui, sans-serif`;
+        ctx.font = `${8 * dpr}px Inter, system-ui, sans-serif`;
         ctx.textAlign = "right";
         ctx.fillText(Math.round(val).toString(), pad.left - 8, y + 4);
       }
@@ -93,7 +93,7 @@ export default function DynoGraph({ result, highlightRpm }: DynoGraphProps) {
         ctx.stroke();
 
         ctx.fillStyle = LABEL_COLOR;
-        ctx.font = `${11 * dpr}px Inter, system-ui, sans-serif`;
+        ctx.font = `${8 * dpr}px Inter, system-ui, sans-serif`;
         ctx.textAlign = "center";
         ctx.fillText(
           rpm >= 1000 ? `${(rpm / 1000).toFixed(1)}k` : rpm.toString(),
@@ -104,7 +104,7 @@ export default function DynoGraph({ result, highlightRpm }: DynoGraphProps) {
 
       // Axis labels
       ctx.fillStyle = LABEL_COLOR;
-      ctx.font = `bold ${12 * dpr}px Inter, system-ui, sans-serif`;
+      ctx.font = `bold ${10 * dpr}px Inter, system-ui, sans-serif`;
       ctx.textAlign = "center";
       ctx.fillText("RPM", pad.left + plotW / 2, H - 6);
 
