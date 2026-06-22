@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "DynoGo"
+version = "1.0.0"
+id = "artifacts/dynago"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25450
+
+[services.development]
+run = "pnpm --filter @workspace/dynago run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/dynago", "run", "build" ]
+publicDir = "artifacts/dynago/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25450"
+BASE_PATH = "/"
