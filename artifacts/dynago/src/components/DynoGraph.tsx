@@ -76,7 +76,7 @@ export default function DynoGraph({ result, highlightRpm }: DynoGraphProps) {
 
         // Y-axis label
         ctx.fillStyle = LABEL_COLOR;
-        ctx.font = `${11 * dpr}px Inter, system-ui, sans-serif`;
+        ctx.font = `${9 * dpr}px Inter, system-ui, sans-serif`;
         ctx.textAlign = "right";
         ctx.fillText(Math.round(val).toString(), pad.left - 8, y + 4);
       }
