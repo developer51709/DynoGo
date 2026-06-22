@@ -234,7 +234,7 @@ export default function DynoGraph({ result, highlightRpm }: DynoGraphProps) {
       const legendX = pad.left + plotW - 8;
 
       ctx.textAlign = "right";
-      ctx.font = `bold ${8 * dpr}px Inter, system-ui, sans-serif`;
+      ctx.font = `bold ${6 * dpr}px Inter, system-ui, sans-serif`;
 
       ctx.fillStyle = HP_COLOR;
       ctx.fillRect(legendX - 100, legendY - 9, 20, 4);
