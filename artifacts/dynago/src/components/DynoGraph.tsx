@@ -230,6 +230,7 @@ export default function DynoGraph({ result, highlightRpm }: DynoGraphProps) {
       }
 
       // Legend
+      /*
       const legendY = pad.top + 14;
       const legendX = pad.left + plotW - 8;
 
@@ -245,6 +246,7 @@ export default function DynoGraph({ result, highlightRpm }: DynoGraphProps) {
       ctx.fillRect(legendX - 100, legendY + 11, 20, 4);
       ctx.fillStyle = "hsl(210, 20%, 80%)";
       ctx.fillText("Torque (lb-ft)", legendX, legendY + 20);
+      */
     },
     [result, highlightRpm]
   );
