@@ -186,7 +186,7 @@ export default function DynoGraph({ result, highlightRpm }: DynoGraphProps) {
         ctx.fill();
 
         ctx.fillStyle = HP_COLOR;
-        ctx.font = `bold ${11 * dpr}px Inter, system-ui, sans-serif`;
+        ctx.font = `bold ${8 * dpr}px Inter, system-ui, sans-serif`;
         ctx.textAlign = hpX > W - 120 ? "right" : "left";
         ctx.fillText(
           `${Math.round(result.peak_hp)} HP`,
@@ -203,7 +203,7 @@ export default function DynoGraph({ result, highlightRpm }: DynoGraphProps) {
         ctx.fill();
 
         ctx.fillStyle = TORQUE_COLOR;
-        ctx.font = `bold ${11 * dpr}px Inter, system-ui, sans-serif`;
+        ctx.font = `bold ${8 * dpr}px Inter, system-ui, sans-serif`;
         ctx.textAlign = tqX > W - 120 ? "right" : "left";
         ctx.fillText(
           `${Math.round(result.peak_torque)} lb-ft`,
@@ -234,7 +234,7 @@ export default function DynoGraph({ result, highlightRpm }: DynoGraphProps) {
       const legendX = pad.left + plotW - 8;
 
       ctx.textAlign = "right";
-      ctx.font = `bold ${12 * dpr}px Inter, system-ui, sans-serif`;
+      ctx.font = `bold ${10 * dpr}px Inter, system-ui, sans-serif`;
 
       ctx.fillStyle = HP_COLOR;
       ctx.fillRect(legendX - 100, legendY - 9, 20, 4);
