@@ -2,7 +2,7 @@
 
 A browser-based engine dyno simulation tool built for accuracy, clarity, and usability — inspired by the old desktop dyno software that used to run on machines that no longer support it.
 
-**[Live Demo →](https://your-username.github.io/DynoGo)**
+**[Live Demo →](https://soren.is-a.dev/DynoGo)**
 
 ![DynoGo Screenshot](https://placehold.co/1280x720/151b24/f97316?text=DynoGo+Engine+Simulator)
 
@@ -85,25 +85,6 @@ The app is served at `http://localhost:<PORT>` (port is assigned automatically).
 
 The repo includes a GitHub Actions workflow that builds and deploys automatically on every push to `main`.
 
-### First-time setup
-
-The workflow file is committed as `_github/workflows/deploy.yml` because Replit's GitHub integration cannot write to `.github/` directly. You need to rename it once:
-
-**Option A — rename on GitHub (no local clone needed):**
-1. Push the repo to GitHub from Replit.
-2. Open `_github/workflows/deploy.yml` on GitHub and click the ✏️ pencil icon.
-3. In the filename bar, change `_github` → `.github` and commit.
-4. Go to **Settings → Pages → Source → GitHub Actions**.
-
-**Option B — rename locally:**
-```bash
-mv _github .github
-git add .github
-git rm -r --cached _github
-git commit -m "activate GitHub Actions"
-git push
-```
-
 ### What the workflow does
 
 1. Installs pnpm + Node.js 24 on Ubuntu.
@@ -113,7 +94,7 @@ git push
 After setup, every push to `main` deploys automatically. The site will be live at:
 
 ```
-https://<your-username>.github.io/<repo-name>/
+https://<your-username>.github.io/DynoGo/
 ```
 
 ---
@@ -134,7 +115,7 @@ DynoGo/
 │       │   └── pages/
 │       │       └── DynoPage.tsx       # Main page layout
 │       └── vite.config.ts
-├── _github/
+├── .github/
 │   └── workflows/
 │       └── deploy.yml        # GitHub Actions (rename folder to .github)
 └── pnpm-workspace.yaml
