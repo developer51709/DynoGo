@@ -157,8 +157,13 @@ function thermalEfficiency(cr: number, afr: number, stoich_afr: number): number 
  * Peak VE RPM empirical relationship (from cam manufacturer data):
  *   rpm_peak_ve ≈ 2200 + (duration − 200) × 55
  *
- * Width (sigma) of the bell:
- *   sigma ≈ 800 + (duration − 200) × 18
+ * Width (sigma) of the bell is asymmetric — reversion closes the curve quickly
+ * below peak VE, while finite valve area only chokes it gradually above:
+ *   sigma_low  ≈ 900 + (duration − 200) × 20
+ *   sigma_high ≈ 1200 + (duration − 200) × 30
+ *
+ * VE decays toward a residual floor rather than to zero, so a real engine still
+ * makes torque at redline instead of reporting no power.
  *
  * Tighter LSA = more low-end torque, narrower power band.
  * Wider LSA = broader power band, less peak VE.
@@ -173,8 +178,9 @@ function computeVE(
   // Peak VE RPM — cams with more duration peak higher in the RPM range
   const rpm_peak = 2200 + (cam_duration - 200) * 55;
 
-  // Width of the VE bell curve — longer cams have a broader power band
-  const sigma = 900 + (cam_duration - 200) * 18;
+  // Asymmetric width — longer cams have a broader power band
+  const sigma_low = 900 + (cam_duration - 200) * 20;
+  const sigma_high = 1200 + (cam_duration - 200) * 30;
 
   // Peak VE value — very aggressive cams can reach 105%+ on race engines
   // Typical: street cam 78-85%, race cam 90-100%
@@ -185,22 +191,22 @@ function computeVE(
   // LSA effect: tighter LSA shifts VE curve lower in RPM and slightly reduces peak
   // Wider LSA broadens the curve
   const lsa_rpm_shift = (112 - lsa) * 35; // tighter LSA peaks lower
-  const adjusted_peak_rpm = rpm_peak - lsa_rpm_shift;
+  const adjusted_peak_rpm = Math.max(1000, rpm_peak - lsa_rpm_shift);
   const lsa_sigma_factor = 1.0 + (lsa - 112) * 0.02; // wider LSA = wider curve
 
-  // Gaussian VE curve
-  const ve_gaussian =
-    ve_peak *
-    Math.exp(
-      -Math.pow(rpm - adjusted_peak_rpm, 2) /
-        (2 * Math.pow(sigma * lsa_sigma_factor, 2))
-    );
+  const sigma =
+    (rpm <= adjusted_peak_rpm ? sigma_low : sigma_high) * lsa_sigma_factor;
 
-  // Low-RPM reversion floor (at idle, VE is typically 50-65%)
-  // Engines idle at 65-70% VE, rising quickly above 1500 rpm
-  const ve_idle_floor = 0.62;
-  const ve_ramp = Math.min(1.0, (rpm - 500) / 1200);
-  const ve_with_floor = ve_idle_floor + (ve_gaussian - ve_idle_floor) * ve_ramp;
+  // Asymmetric bell, normalised to 1.0 at peak VE
+  const bell = Math.exp(
+    -Math.pow(rpm - adjusted_peak_rpm, 2) / (2 * Math.pow(sigma, 2))
+  );
+
+  // Residual VE floor: the head still flows at redline, so VE decays toward this
+  // value instead of zero. A pure bell reaches ~5% by redline, which made the
+  // engine report 0 hp long before the rev limit.
+  const ve_floor = Math.max(0.25, 0.32 + (cam_duration - 200) * 0.0008);
+  const ve_with_floor = ve_floor + (ve_peak - ve_floor) * bell;
 
   // Boost densifies charge — increases effective VE above 100% possible
   // Boosted VE = NA_VE * (P_manifold / P_atm)
@@ -363,6 +369,42 @@ export function ciToLiters(ci: number): number {
  */
 export function litersToCi(l: number): number {
   return l / 0.016387;
+}
+
+export const HP_TO_KW = 0.7457;
+
+/**
+ * Convert brake horsepower to kilowatts (1 hp = 745.7 W).
+ */
+export function hpToKw(hp: number): number {
+  return hp * HP_TO_KW;
+}
+
+/** Reference vehicle mass for the 0-60 estimate, in kg (~3,500 lb). */
+const ZERO_SIXTY_REFERENCE_MASS_KG = 1600;
+
+/**
+ * Rough 0-60 mph estimate from peak crank horsepower.
+ *
+ * A dyno measures engine output, not vehicle acceleration, so this assumes a
+ * fixed reference car and a single effectiveness factor rather than claiming a
+ * measured result. Effective power is ~45% of peak at the wheels once drivetrain
+ * loss, a traction-limited launch, shift gaps and drag are accounted for.
+ *
+ * Energy method: ½·m·v² = η·P·t  →  t = m·v² / (2·η·P)
+ *
+ * Returns null when there is no meaningful power to accelerate with.
+ */
+export function estimateZeroToSixtySeconds(peakHp: number): number | null {
+  if (!(peakHp > 1)) return null;
+
+  const targetSpeed = 26.82; // m/s, i.e. 60 mph
+  const effectiveWatts = 0.45 * hpToKw(peakHp) * 1000;
+
+  return (
+    (ZERO_SIXTY_REFERENCE_MASS_KG * targetSpeed * targetSpeed) /
+    (2 * effectiveWatts)
+  );
 }
 
 export const DEFAULT_PARAMS: EngineParams = {

@@ -1,3 +1,4 @@
+import { estimateZeroToSixtySeconds, hpToKw } from "@/lib/engine";
 import type { DynoResult, DynoPoint } from "@/lib/engine";
 
 interface StatCardProps {
@@ -145,16 +146,19 @@ export default function ResultsPanel({
         </div>
         <div className="grid grid-cols-3 gap-3 text-center">
           <div>
-            <div className="text-xl font-mono font-bold text-foreground">
-              {(result.peak_hp / 14.2).toFixed(1)}
+            <div
+              className="text-xl font-mono font-bold text-foreground"
+              title="Rough estimate for a 1,600 kg reference car. A dyno measures engine output, not vehicle acceleration."
+            >
+              {estimateZeroToSixtySeconds(result.peak_hp)?.toFixed(1) ?? "—"}
             </div>
             <div className="text-xs text-muted-foreground mt-0.5">est. 0–60 (s)</div>
           </div>
           <div>
             <div className="text-xl font-mono font-bold text-foreground">
-              {Math.round((result.peak_hp * 550 * 0.85) / 1000)}k
+              {Math.round(hpToKw(result.peak_hp))}
             </div>
-            <div className="text-xs text-muted-foreground mt-0.5">peak power (W)</div>
+            <div className="text-xs text-muted-foreground mt-0.5">peak power (kW)</div>
           </div>
           <div>
             <div className="text-xl font-mono font-bold text-foreground">

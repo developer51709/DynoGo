@@ -25,7 +25,7 @@ Outputs updated in real time:
 - Animated torque & HP curves on a Canvas graph
 - Peak HP and torque with RPM
 - Live data scrubber — inspect HP, torque, VE, CFM, MAF, fuel flow, thermal efficiency, friction HP, and BSFC at any RPM point
-- Performance estimates (0–60, peak power in watts, peak CFM)
+- Performance estimates (0–60 for a 1,600 kg reference car, peak power in kW, peak CFM)
 
 ---
 
