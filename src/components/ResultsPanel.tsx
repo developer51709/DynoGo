@@ -1,242 +1,213 @@
 import { estimateZeroToSixtySeconds, hpToKw } from "@/lib/engine";
-import type { DynoResult, DynoPoint } from "@/lib/engine";
-
-interface StatCardProps {
-  label: string;
-  value: string;
-  unit: string;
-  sub?: string;
-  color?: "torque" | "hp" | "neutral";
-  icon: React.ReactNode;
-}
-
-function StatCard({ label, value, unit, sub, color = "neutral", icon }: StatCardProps) {
-  const colorClass =
-    color === "torque"
-      ? "text-orange-400"
-      : color === "hp"
-      ? "text-blue-400"
-      : "text-foreground";
-  const borderClass =
-    color === "torque"
-      ? "border-orange-500/30"
-      : color === "hp"
-      ? "border-blue-500/30"
-      : "border-card-border";
-  const bgClass =
-    color === "torque"
-      ? "bg-orange-500/5"
-      : color === "hp"
-      ? "bg-blue-500/5"
-      : "bg-card";
-
-  return (
-    <div
-      className={`rounded-xl border p-4 flex flex-col gap-1 ${bgClass} ${borderClass}`}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground font-medium">{label}</span>
-        <span className={`${colorClass} opacity-70`}>{icon}</span>
-      </div>
-      <div className={`text-3xl font-mono font-bold ${colorClass}`}>{value}</div>
-      <div className="text-xs text-muted-foreground">
-        {unit}
-        {sub && <span className="text-muted-foreground/60 ml-2">{sub}</span>}
-      </div>
-    </div>
-  );
-}
-
-interface LiveDataRowProps {
-  label: string;
-  value: string;
-  unit: string;
-}
-
-function LiveRow({ label, value, unit }: LiveDataRowProps) {
-  return (
-    <div className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-sm font-mono font-semibold text-foreground">{value}</span>
-        <span className="text-xs text-muted-foreground">{unit}</span>
-      </div>
-    </div>
-  );
-}
+import type { DynoPoint, DynoResult } from "@/lib/engine";
 
 interface ResultsPanelProps {
   result: DynoResult;
   livePoint?: DynoPoint;
   highlightRpm: number;
-  onHighlightRpmChange: (rpm: number) => void;
+}
+
+function PeakCard({
+  label,
+  value,
+  unit,
+  sub,
+  tone,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+  sub: string;
+  tone: "hp" | "tq";
+}) {
+  const accent = tone === "hp" ? "text-hp" : "text-tq";
+  const ring = tone === "hp" ? "border-hp/25" : "border-tq/25";
+  const glow = tone === "hp" ? "bg-hp/8" : "bg-tq/8";
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-2xl border ${ring} ${glow} p-4`}
+    >
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1.5 flex items-baseline gap-1.5">
+        <span
+          className={`font-mono text-[30px] font-bold leading-none tabular-nums ${accent}`}
+        >
+          {value}
+        </span>
+        <span className="text-xs font-medium text-muted-foreground">
+          {unit}
+        </span>
+      </div>
+      <div className="mt-2 font-mono text-[11px] tabular-nums text-muted-foreground/80">
+        {sub}
+      </div>
+    </div>
+  );
+}
+
+function Tile({
+  label,
+  value,
+  unit,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-secondary/40 px-2.5 py-2.5 text-center">
+      <div className="font-mono text-base font-semibold tabular-nums text-foreground">
+        {value}
+      </div>
+      <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+        {unit}
+      </div>
+      <div className="sr-only">{label}</div>
+    </div>
+  );
+}
+
+function Row({
+  label,
+  value,
+  unit,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-[7px]">
+      <span className="text-[12.5px] text-muted-foreground">{label}</span>
+      <span className="flex items-baseline gap-1.5">
+        <span className="font-mono text-[12.5px] font-semibold tabular-nums text-foreground">
+          {value}
+        </span>
+        <span className="w-14 text-right text-[10px] text-muted-foreground">
+          {unit}
+        </span>
+      </span>
+    </div>
+  );
 }
 
 export default function ResultsPanel({
   result,
   livePoint,
   highlightRpm,
-  onHighlightRpmChange,
 }: ResultsPanelProps) {
-  const pt = livePoint ?? result.points[Math.floor(result.points.length / 2)];
+  const pt =
+    livePoint ?? result.points[Math.floor(result.points.length / 2)] ?? null;
 
-  /* Phosphor icons */
-  const icons = {
-    lightning: (
-      <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
-        <path d="M215.79,118.17a8,8,0,0,0-5-5.66L153.18,90.9l14.66-73.33a8,8,0,0,0-13.69-7l-112,120a8,8,0,0,0,3,13l57.63,21.61L88.16,238.43a8,8,0,0,0,13.69,7l112-120A8,8,0,0,0,215.79,118.17Z"/>
-      </svg>
-    ),
-    wrench: (
-      <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
-        <path d="M232,96a72,72,0,0,1-100.94,66L79,222.22c-.12.14-.26.29-.39.42a32,32,0,0,1-45.26-45.26c.14-.13.28-.27.43-.39L94,124.94a72.07,72.07,0,0,1,83.54-98.78,8,8,0,0,1,3.93,13.19L144,80l5.66,26.35L176,112l40.65-37.52a8,8,0,0,1,13.19,3.93A72.6,72.6,0,0,1,232,96Z"/>
-      </svg>
-    ),
-    thermometer: (
-      <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
-        <path d="M148,152.4V48a20,20,0,0,0-40,0V152.4a36,36,0,1,0,40,0ZM128,56a4,4,0,0,1,4,4v4h-8V60A4,4,0,0,1,128,56Zm0,136a20,20,0,1,1,20-20A20,20,0,0,1,128,192Z"/>
-      </svg>
-    ),
-    drop: (
-      <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
-        <path d="M174,47.75a254.19,254.19,0,0,0-41.45-38.3,8,8,0,0,0-9.18,0A254.19,254.19,0,0,0,82,47.75C54.51,79.32,40,112.6,40,144a88,88,0,0,0,176,0C216,112.6,201.49,79.32,174,47.75ZM128,216a72.08,72.08,0,0,1-72-72c0-57.23,55.47-105,72-118,16.53,13,72,60.75,72,118A72.08,72.08,0,0,1,128,216Z"/>
-      </svg>
-    ),
-    wind: (
-      <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
-        <path d="M184,72a32,32,0,0,0-32-32c-13.1,0-24.8,7.92-30.29,20.43A8,8,0,0,0,136.31,70c3.35-7.9,10.45-14,19.69-14a16,16,0,0,1,0,32H24a8,8,0,0,0,0,16H156A32,32,0,0,0,184,72Zm-24,88H24a8,8,0,0,0,0,16H160a16,16,0,0,1,0,32c-9.24,0-16.34-6.1-19.69-14a8,8,0,0,0-14.6,6.43C131.2,212.08,142.9,220,156,220a32,32,0,0,0,4-63.75V156A32,32,0,0,0,160,160Zm32-48H24a8,8,0,0,0,0,16H192a16,16,0,0,1,0,32H160a8,8,0,0,0,0,16h32a32,32,0,0,0,0-64Z"/>
-      </svg>
-    ),
-    chart: (
-      <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
-        <path d="M232,208a8,8,0,0,1-8,8H32a8,8,0,0,1-8-8V48a8,8,0,0,1,16,0V156.69l50.34-50.35a8,8,0,0,1,11.32,0L128,132.69,180.69,80H160a8,8,0,0,1,0-16h40a8,8,0,0,1,8,8v40a8,8,0,0,1-16,0V91.31l-58.34,58.35a8,8,0,0,1-11.32,0L96,123.31,40,179.31V200H224A8,8,0,0,1,232,208Z"/>
-      </svg>
-    ),
-  };
+  const zeroSixty = estimateZeroToSixtySeconds(result.peak_hp);
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Peak numbers */}
+    <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-3">
-        <StatCard
-          label="Peak Horsepower"
+        <PeakCard
+          label="Peak power"
           value={Math.round(result.peak_hp).toString()}
-          unit="HP"
-          sub={`@ ${result.peak_hp_rpm.toLocaleString()} RPM`}
-          color="hp"
-          icon={icons.lightning}
+          unit="hp"
+          sub={`@ ${result.peak_hp_rpm.toLocaleString()} rpm`}
+          tone="hp"
         />
-        <StatCard
-          label="Peak Torque"
+        <PeakCard
+          label="Peak torque"
           value={Math.round(result.peak_torque).toString()}
-          unit="lb-ft"
-          sub={`@ ${result.peak_torque_rpm.toLocaleString()} RPM`}
-          color="torque"
-          icon={icons.wrench}
+          unit="lb·ft"
+          sub={`@ ${result.peak_torque_rpm.toLocaleString()} rpm`}
+          tone="tq"
         />
       </div>
 
-      {/* Estimated 0-60 */}
-      <div className="rounded-xl border border-card-border bg-card p-4">
-        <div className="flex items-center gap-2 text-xs font-semibold tracking-widest uppercase text-primary/80 mb-3">
-          <svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor">
-            <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm56-88a8,8,0,0,1-8,8H136a8,8,0,0,1-8-8V80a8,8,0,0,1,16,0v40h32A8,8,0,0,1,184,128Z"/>
-          </svg>
-          <span>Performance Estimates</span>
+      <div className="rounded-2xl border border-card-border bg-card/70 p-3.5">
+        <div className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          Estimates
         </div>
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <div>
-            <div
-              className="text-xl font-mono font-bold text-foreground"
-              title="Rough estimate for a 1,600 kg reference car. A dyno measures engine output, not vehicle acceleration."
-            >
-              {estimateZeroToSixtySeconds(result.peak_hp)?.toFixed(1) ?? "—"}
-            </div>
-            <div className="text-xs text-muted-foreground mt-0.5">est. 0–60 (s)</div>
-          </div>
-          <div>
-            <div className="text-xl font-mono font-bold text-foreground">
-              {Math.round(hpToKw(result.peak_hp))}
-            </div>
-            <div className="text-xs text-muted-foreground mt-0.5">peak power (kW)</div>
-          </div>
-          <div>
-            <div className="text-xl font-mono font-bold text-foreground">
-              {Math.round(result.peak_cfm)}
-            </div>
-            <div className="text-xs text-muted-foreground mt-0.5">peak CFM</div>
-          </div>
+        <div className="grid grid-cols-3 gap-2">
+          <Tile
+            label="Estimated zero to sixty"
+            value={zeroSixty != null ? zeroSixty.toFixed(1) : "—"}
+            unit="0–60 s"
+          />
+          <Tile
+            label="Peak power in kilowatts"
+            value={Math.round(hpToKw(result.peak_hp)).toString()}
+            unit="kW"
+          />
+          <Tile
+            label="Peak airflow"
+            value={Math.round(result.peak_cfm).toString()}
+            unit="CFM"
+          />
         </div>
+        <p className="mt-2.5 text-[10.5px] leading-relaxed text-muted-foreground/70">
+          0–60 assumes a 1,600 kg reference car; a dyno measures engine output,
+          not vehicle acceleration.
+        </p>
       </div>
 
-      {/* Cursor / live data */}
-      <div className="rounded-xl border border-card-border bg-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2 text-xs font-semibold tracking-widest uppercase text-primary/80">
-            {icons.chart}
-            <span>Live Data at RPM</span>
-          </div>
-          <span className="text-sm font-mono font-bold text-foreground">
-            {highlightRpm.toLocaleString()} RPM
+      <div className="rounded-2xl border border-card-border bg-card/70 px-3.5 py-3">
+        <div className="mb-1 flex items-baseline justify-between">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Live data
+          </span>
+          <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
+            {highlightRpm.toLocaleString()}
+            <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+              rpm
+            </span>
           </span>
         </div>
 
-        <input
-          type="range"
-          min={result.points[0].rpm}
-          max={result.points[result.points.length - 1].rpm}
-          step={50}
-          value={highlightRpm}
-          onChange={(e) => onHighlightRpmChange(parseInt(e.target.value))}
-          className="w-full mb-3"
-          aria-label="Scrub RPM"
-        />
-
-        <LiveRow
-          label="Horsepower"
-          value={Math.round(pt.hp).toString()}
-          unit="HP"
-        />
-        <LiveRow
-          label="Torque"
-          value={Math.round(pt.torque_lbft).toString()}
-          unit="lb-ft"
-        />
-        <LiveRow
-          label="Volumetric Efficiency"
-          value={(pt.ve * 100).toFixed(1)}
-          unit="%"
-        />
-        <LiveRow
-          label="Airflow (CFM)"
-          value={pt.cfm.toFixed(1)}
-          unit="CFM"
-        />
-        <LiveRow
-          label="Mass Air Flow"
-          value={(pt.maf_lbmin * 60).toFixed(2)}
-          unit="lb/hr"
-        />
-        <LiveRow
-          label="Fuel Flow"
-          value={(pt.fuel_flow_lbmin * 60).toFixed(3)}
-          unit="lb/hr"
-        />
-        <LiveRow
-          label="Thermal Efficiency"
-          value={(pt.thermal_efficiency * 100).toFixed(1)}
-          unit="%"
-        />
-        <LiveRow
-          label="Friction HP"
-          value={pt.fhp.toFixed(1)}
-          unit="HP"
-        />
-        <LiveRow
-          label="BSFC"
-          value={pt.bsfc.toFixed(3)}
-          unit="lb/HP·hr"
-        />
+        {pt ? (
+          <div className="divide-y divide-border/40">
+            <Row
+              label="Horsepower"
+              value={Math.round(pt.hp).toString()}
+              unit="hp"
+            />
+            <Row
+              label="Torque"
+              value={Math.round(pt.torque_lbft).toString()}
+              unit="lb·ft"
+            />
+            <Row
+              label="Volumetric efficiency"
+              value={(pt.ve * 100).toFixed(1)}
+              unit="%"
+            />
+            <Row label="Airflow" value={pt.cfm.toFixed(0)} unit="CFM" />
+            <Row
+              label="Mass air flow"
+              value={(pt.maf_lbmin * 60).toFixed(0)}
+              unit="lb/hr"
+            />
+            <Row
+              label="Fuel flow"
+              value={(pt.fuel_flow_lbmin * 60).toFixed(1)}
+              unit="lb/hr"
+            />
+            <Row
+              label="Thermal efficiency"
+              value={(pt.thermal_efficiency * 100).toFixed(1)}
+              unit="%"
+            />
+            <Row label="Friction" value={pt.fhp.toFixed(1)} unit="hp" />
+            <Row
+              label="BSFC"
+              value={pt.bsfc > 90 ? "—" : pt.bsfc.toFixed(3)}
+              unit="lb/hp·hr"
+            />
+          </div>
+        ) : (
+          <p className="py-6 text-center text-xs text-muted-foreground">
+            No data at this RPM.
+          </p>
+        )}
       </div>
     </div>
   );

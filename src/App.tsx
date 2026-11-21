@@ -1,6 +1,4 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import DynoPage from "@/pages/DynoPage";
 import NotFound from "@/pages/not-found";
 
@@ -13,15 +11,10 @@ function Router() {
   );
 }
 
-function App() {
+export default function App() {
   return (
-    <TooltipProvider>
-      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-        <Router />
-      </WouterRouter>
-      <Toaster />
-    </TooltipProvider>
+    <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+      <Router />
+    </WouterRouter>
   );
 }
-
-export default App;

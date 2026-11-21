@@ -42,6 +42,7 @@ All calculations are based on real internal combustion engine thermodynamics. No
 | **Friction HP** | Chen-Flynn correlation: `FMEP × displacement × RPM / (2 × 792,000)` |
 | **Torque** | `Torque = HP × 5252 / RPM` |
 | **BSFC** | `fuel_flow [lb/hr] / BHP` |
+| **Boost Density** | `(P_man / P_atm) × (T_amb / T_man)` — compressor temperature rise with intercooler effectiveness |
 
 **References:**
 - Heywood, J.B. — *Internal Combustion Engine Fundamentals* (1988)

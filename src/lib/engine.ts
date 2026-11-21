@@ -110,6 +110,63 @@ const ATM_PSI = 14.696;      // psia
 const GAMMA = 1.355;          // Ratio of specific heats for fuel-air mixture (slightly below 1.4 for air)
 const HP_PER_BTU_MIN = 1 / 42.44; // 1 HP = 42.44 BTU/min
 
+// Charge-air model
+const AMBIENT_TEMP_K = 288.15;      // 59 °F — matches RHO_AIR_STD
+const GAMMA_AIR = 1.4;              // ratio of specific heats for air
+const COMPRESSOR_EFFICIENCY = 0.72; // typical turbo/supercharger isentropic efficiency
+
+/**
+ * Manifold charge temperature after compression and intercooling, in Kelvin.
+ *
+ * Compressor outlet follows the isentropic relation
+ *   T_out = T_amb · (1 + (PR^((γ−1)/γ) − 1) / η_c)
+ * and the intercooler then removes a fraction of the temperature rise equal to
+ * its effectiveness:
+ *   T_man = T_out − η_ic · (T_out − T_amb)
+ *
+ * With η_ic = 0 the charge stays at compressor-outlet temperature; with η_ic = 1
+ * it returns fully to ambient.
+ */
+export function manifoldTempK(boost_psi: number, intercooler_efficiency: number): number {
+  if (boost_psi <= 0) return AMBIENT_TEMP_K;
+
+  const pressure_ratio = 1 + boost_psi / ATM_PSI;
+  const outlet_k =
+    AMBIENT_TEMP_K *
+    (1 +
+      (Math.pow(pressure_ratio, (GAMMA_AIR - 1) / GAMMA_AIR) - 1) /
+        COMPRESSOR_EFFICIENCY);
+
+  const ic = Math.min(1, Math.max(0, intercooler_efficiency));
+  return outlet_k - ic * (outlet_k - AMBIENT_TEMP_K);
+}
+
+/** Manifold charge temperature in °F, for display. */
+export function manifoldTempF(boost_psi: number, intercooler_efficiency: number): number {
+  return (manifoldTempK(boost_psi, intercooler_efficiency) - 273.15) * 1.8 + 32;
+}
+
+/**
+ * Charge density ratio relative to ambient — how much more air mass the engine
+ * ingests per unit of VE than it would naturally aspirated.
+ *
+ *   ρ/ρ_amb = (P_man / P_amb) · (T_amb / T_man)
+ *
+ * Pressure alone overstates the gain: compressing air heats it, and the
+ * intercooler's effectiveness decides how much of that heat is removed. An
+ * engine with no intercooler therefore makes materially less power at the same
+ * boost pressure.
+ */
+export function boostDensityRatio(boost_psi: number, intercooler_efficiency: number): number {
+  if (boost_psi <= 0) return 1;
+
+  const pressure_ratio = 1 + boost_psi / ATM_PSI;
+  return (
+    pressure_ratio *
+    (AMBIENT_TEMP_K / manifoldTempK(boost_psi, intercooler_efficiency))
+  );
+}
+
 /**
  * Otto cycle thermal efficiency
  * η_th = 1 − CR^(1−γ)
@@ -173,6 +230,7 @@ function computeVE(
   cam_duration: number,
   lsa: number,
   boost_psi: number,
+  intercooler_efficiency: number,
   ve_preset_multiplier: number
 ): number {
   // Peak VE RPM — cams with more duration peak higher in the RPM range
@@ -208,13 +266,11 @@ function computeVE(
   const ve_floor = Math.max(0.25, 0.32 + (cam_duration - 200) * 0.0008);
   const ve_with_floor = ve_floor + (ve_peak - ve_floor) * bell;
 
-  // Boost densifies charge — increases effective VE above 100% possible
-  // Boosted VE = NA_VE * (P_manifold / P_atm)
-  // With intercooler reducing charge temp, density recovers partially
-  const pressure_ratio = 1.0 + boost_psi / ATM_PSI;
-  // Intercooler cooling improves density ratio beyond simple pressure boost
-  // We model this as boosted VE = NA_VE * pressure_ratio (intercooler assumed in model)
-  const ve_boosted = ve_with_floor * pressure_ratio;
+  // Boost densifies the charge. The density ratio accounts for the pressure rise
+  // *and* the temperature rise of compression, with intercooler effectiveness
+  // deciding how much of that heat is removed.
+  const density_ratio = boostDensityRatio(boost_psi, intercooler_efficiency);
+  const ve_boosted = ve_with_floor * density_ratio;
 
   return Math.max(0.05, ve_boosted);
 }
@@ -261,6 +317,7 @@ function simulatePoint(rpm: number, params: EngineParams): DynoPoint {
     params.cam_duration,
     params.lsa,
     params.boost_psi,
+    params.intercooler_efficiency,
     params.ve_preset
   );
 
@@ -315,10 +372,10 @@ function simulatePoint(rpm: number, params: EngineParams): DynoPoint {
 
 /**
  * Run the full dyno sweep from idle to redline.
- * Uses 50 RPM steps for a smooth curve.
+ * Uses 50 RPM steps so the sampled curve matches the 50 RPM scrubber.
  */
 export function runDyno(params: EngineParams): DynoResult {
-  const step = 100;
+  const step = 50;
   const points: DynoPoint[] = [];
 
   for (let rpm = params.idle_rpm; rpm <= params.redline_rpm; rpm += step) {

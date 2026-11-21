@@ -1,21 +1,23 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
-
 export default function NotFound() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
-          </div>
-
-          <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
-          </p>
-        </CardContent>
-      </Card>
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm rounded-2xl border border-card-border bg-card/70 p-6 text-center">
+        <div className="font-mono text-4xl font-bold tracking-tight text-primary">
+          404
+        </div>
+        <h1 className="mt-2 text-base font-semibold text-foreground">
+          Page not found
+        </h1>
+        <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
+          That route doesn&rsquo;t exist. Head back to the dyno to keep tuning.
+        </p>
+        <a
+          href="./"
+          className="mt-4 inline-flex items-center rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+        >
+          Back to the dyno
+        </a>
+      </div>
     </div>
   );
 }
