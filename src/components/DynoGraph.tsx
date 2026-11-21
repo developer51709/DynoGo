@@ -120,6 +120,7 @@ export default function DynoGraph({ result, highlightRpm }: DynoGraphProps) {
       const visiblePoints = result.points.slice(0, visibleCount);
 
       function drawCurve(
+        ctx: CanvasRenderingContext2D,
         points: DynoPoint[],
         getValue: (p: DynoPoint) => number,
         color: string,
@@ -164,8 +165,8 @@ export default function DynoGraph({ result, highlightRpm }: DynoGraphProps) {
         ctx.globalAlpha = 1;
       }
 
-      drawCurve(visiblePoints, (p) => p.torque_lbft, TORQUE_COLOR, 2.5 * dpr);
-      drawCurve(visiblePoints, (p) => p.hp, HP_COLOR, 2.5 * dpr);
+      drawCurve(ctx, visiblePoints, (p) => p.torque_lbft, TORQUE_COLOR, 2.5 * dpr);
+      drawCurve(ctx, visiblePoints, (p) => p.hp, HP_COLOR, 2.5 * dpr);
 
       // Axis border
       ctx.strokeStyle = "hsl(220, 14%, 25%)";

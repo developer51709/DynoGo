@@ -5,11 +5,18 @@ dist
 tmp
 out-tsc
 *.tsbuildinfo
-.expo
-.expo-shared
 
 # dependencies
 node_modules
+
+# logs
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# misc
+.sass-cache
+/coverage
 
 # IDEs and editors
 /.idea
@@ -19,31 +26,12 @@ node_modules
 *.launch
 .settings/
 *.sublime-workspace
-
-# IDE - VSCode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# misc
-/.sass-cache
-/connect.lock
-/coverage
-/libpeerconnection.log
-npm-debug.log
-yarn-error.log
-testem.log
-/typings
-
-# System Files
+# System files
 .DS_Store
 Thumbs.db
-
-.cursor/rules/nx-rules.mdc
-.github/instructions/nx.instructions.md
-
-# Replit
-.cache/
-.local/

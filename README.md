@@ -4,8 +4,6 @@ A browser-based engine dyno simulation tool built for accuracy, clarity, and usa
 
 **[Live Demo →](https://soren.is-a.dev/DynoGo)**
 
-![DynoGo Screenshot](https://placehold.co/1280x720/151b24/f97316?text=DynoGo+Engine+Simulator)
-
 ---
 
 ## What it does
@@ -57,9 +55,8 @@ All calculations are based on real internal combustion engine thermodynamics. No
 - **React + Vite** — UI and build tooling
 - **TypeScript** — fully typed physics engine and components
 - **Tailwind CSS v4** — styling
-- **Phosphor Icons** — all icons (SVG-inlined, zero external requests)
+- **Inline SVG icons** — zero external icon requests
 - **HTML Canvas** — animated torque/HP graph
-- **pnpm workspaces** — monorepo
 
 100% client-side. No backend, no database, no external APIs.
 
@@ -70,14 +67,14 @@ All calculations are based on real internal combustion engine thermodynamics. No
 Requires [Node.js 24+](https://nodejs.org) and [pnpm 10+](https://pnpm.io).
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Start the dev server
-pnpm --filter @workspace/dynago run dev
+pnpm dev            # dev server on http://localhost:3000
+pnpm build          # typecheck + production build into dist/
+pnpm preview        # serve the production build
+pnpm typecheck      # types only
 ```
 
-The app is served at `http://localhost:<PORT>` (port is assigned automatically).
+`PORT` and `BASE_PATH` are optional environment variables; they default to `3000` and `/`.
 
 ---
 
@@ -88,10 +85,10 @@ The repo includes a GitHub Actions workflow that builds and deploys automaticall
 ### What the workflow does
 
 1. Installs pnpm + Node.js 24 on Ubuntu.
-2. Runs `pnpm --filter @workspace/dynago run build` with `BASE_PATH=/`.
-3. Uploads `artifacts/dynago/dist/public/` to GitHub Pages via the official `actions/deploy-pages` action.
+2. Runs `pnpm run build` with `BASE_PATH=/DynoGo/`.
+3. Uploads `dist/` to GitHub Pages via the official `actions/deploy-pages` action.
 
-After setup, every push to `main` deploys automatically. The site will be live at:
+Enable **Settings → Pages → Source: GitHub Actions** once. After that, every push to `main` deploys automatically to:
 
 ```
 https://<your-username>.github.io/DynoGo/
@@ -103,22 +100,24 @@ https://<your-username>.github.io/DynoGo/
 
 ```
 DynoGo/
-├── artifacts/
-│   └── dynago/               # The DynoGo web app
-│       ├── src/
-│       │   ├── lib/
-│       │   │   └── engine.ts # Physics simulation engine
-│       │   ├── components/
-│       │   │   ├── DynoGraph.tsx      # Canvas-based HP/Torque graph
-│       │   │   ├── EngineControls.tsx # All input sliders and selectors
-│       │   │   └── ResultsPanel.tsx   # Peak stats and live data
-│       │   └── pages/
-│       │       └── DynoPage.tsx       # Main page layout
-│       └── vite.config.ts
-├── .github/
-│   └── workflows/
-│       └── deploy.yml        # GitHub Actions (rename folder to .github)
-└── pnpm-workspace.yaml
+├── src/
+│   ├── lib/
+│   │   └── engine.ts          # Physics simulation engine
+│   ├── components/
+│   │   ├── DynoGraph.tsx      # Canvas-based HP/Torque graph
+│   │   ├── EngineControls.tsx # All input sliders and selectors
+│   │   ├── ResultsPanel.tsx   # Peak stats and live data
+│   │   └── ui/                # The few shadcn/ui primitives in use
+│   ├── pages/
+│   │   └── DynoPage.tsx       # Main page layout
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── index.css
+├── public/                    # Static assets
+├── .github/workflows/deploy.yml
+├── index.html
+├── vite.config.ts
+└── package.json
 ```
 
 ---
