@@ -251,12 +251,33 @@ export default function EngineControls({ params, onChange }: EngineControlsProps
     [params, onChange]
   );
 
+  // Switching fuel can leave the current AFR outside the new fuel's window:
+  // 12.8:1 is sensible for gasoline but impossible for diesel, and 22:1 is
+  // useless for E85. Fall back to the new fuel's default mixture instead of
+  // silently pinning the slider to an edge.
+  const setFuel = useCallback(
+    (fuelType: FuelType) => {
+      const next = FUEL_PROPERTIES[fuelType];
+      const afr =
+        params.afr < next.afr_min || params.afr > next.afr_max
+          ? next.afr_default
+          : params.afr;
+      onChange({ ...params, fuel_type: fuelType, afr });
+    },
+    [params, onChange]
+  );
+
   const fuel = FUEL_PROPERTIES[params.fuel_type];
   const lambda = params.afr / fuel.stoich_afr;
+  const afrSpan = fuel.afr_max - fuel.afr_min;
   const afrPct = Math.min(
     100,
-    Math.max(0, ((params.afr - 10.5) / (16.5 - 10.5)) * 100)
+    Math.max(0, ((params.afr - fuel.afr_min) / afrSpan) * 100)
   );
+  const stoichPct = ((fuel.stoich_afr - fuel.afr_min) / afrSpan) * 100;
+  // Diesel's stoichiometry (14.5:1) lies outside its lean-only window, so there
+  // is no truthful place to put a stoich marker on the bar.
+  const stoichInRange = stoichPct >= 0 && stoichPct <= 100;
 
   const mixture =
     lambda < 0.96
@@ -433,7 +454,7 @@ export default function EngineControls({ params, onChange }: EngineControlsProps
           </div>
           <select
             value={params.fuel_type}
-            onChange={(e) => set("fuel_type", e.target.value as FuelType)}
+            onChange={(e) => setFuel(e.target.value as FuelType)}
             aria-label="Fuel type"
           >
             {Object.entries(FUEL_PROPERTIES).map(([key, f]) => (
@@ -447,8 +468,8 @@ export default function EngineControls({ params, onChange }: EngineControlsProps
         <Slider
           label="Air-fuel ratio"
           value={params.afr}
-          min={10.5}
-          max={16.5}
+          min={fuel.afr_min}
+          max={fuel.afr_max}
           step={0.1}
           unit=":1"
           decimals={1}
@@ -469,16 +490,28 @@ export default function EngineControls({ params, onChange }: EngineControlsProps
               className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-tq via-emerald-400 to-amber-300 opacity-70"
               style={{ width: `${afrPct}%` }}
             />
+            {/* stoichiometric reference for this fuel */}
+            {stoichInRange ? (
+              <div
+                className="absolute -top-1 h-3.5 w-px -translate-x-1/2 bg-foreground/30"
+                style={{ left: `${stoichPct}%` }}
+              />
+            ) : null}
             <div
               className="absolute top-1/2 h-3 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground"
               style={{ left: `${afrPct}%` }}
             />
           </div>
           <div className="mt-1 flex justify-between font-mono text-[9.5px] tabular-nums text-muted-foreground/60">
-            <span>10.5</span>
-            <span>stoich {fuel.stoich_afr}</span>
-            <span>16.5</span>
+            <span>{fuel.afr_min.toFixed(1)}</span>
+            <span>{stoichInRange ? `stoich ${fuel.stoich_afr}` : "lean only"}</span>
+            <span>{fuel.afr_max.toFixed(1)}</span>
           </div>
+          <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground/60">
+            {fuel.ignition === "compression"
+              ? `Diesel is compression ignition: it runs only lean of its ${fuel.stoich_afr}:1 stoichiometry, and power stops climbing at the smoke limit.`
+              : "Spark ignition makes peak power near λ 0.85 — richer than that burns incompletely and loses power."}
+          </p>
         </div>
       </Section>
 

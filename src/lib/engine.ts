@@ -10,15 +10,26 @@
 
 export type FuelType = "gasoline" | "e85" | "race_gas" | "diesel" | "e30";
 
+export type IgnitionType = "spark" | "compression";
+
 export interface FuelProperties {
   label: string;
-  lhv: number;       // Lower Heating Value in BTU/lb
+  lhv: number;        // Lower Heating Value in BTU/lb
   stoich_afr: number; // Stoichiometric Air-Fuel Ratio
-  ron: number;       // Research Octane Number (affects knock limit, compression)
-  density: number;   // lb/gallon
+  ron: number;        // Research Octane Number (affects knock limit, compression)
+  density: number;    // lb/gallon
+  ignition: IgnitionType;
+  afr_min: number;    // richest selectable AFR (lowest number)
+  afr_max: number;    // leanest selectable AFR (highest number)
+  afr_default: number; // sensible starting mixture, near peak power
 }
 
-// Fuel properties from literature
+// Fuel properties from literature.
+//
+// Each fuel carries its own usable air-fuel window so the UI cannot ask for a
+// mixture the engine could never run: E85 needs to reach its 9.8:1 stoichiometry
+// (and richer), while diesel only ever runs lean. The windows are centred on the
+// mixture that makes peak power for spark ignition (~λ 0.85).
 export const FUEL_PROPERTIES: Record<FuelType, FuelProperties> = {
   gasoline: {
     label: "Gasoline (91/93 Pump)",
@@ -26,6 +37,10 @@ export const FUEL_PROPERTIES: Record<FuelType, FuelProperties> = {
     stoich_afr: 14.7,
     ron: 93,
     density: 6.17,
+    ignition: "spark",
+    afr_min: 10.5, // λ 0.71
+    afr_max: 16.5, // λ 1.12
+    afr_default: 12.8, // λ 0.87
   },
   e30: {
     label: "E30 (30% Ethanol)",
@@ -33,6 +48,10 @@ export const FUEL_PROPERTIES: Record<FuelType, FuelProperties> = {
     stoich_afr: 13.4,
     ron: 100,
     density: 6.33,
+    ignition: "spark",
+    afr_min: 9.5, // λ 0.71
+    afr_max: 15.0, // λ 1.12
+    afr_default: 11.7, // λ 0.87
   },
   e85: {
     label: "E85 (85% Ethanol)",
@@ -40,6 +59,10 @@ export const FUEL_PROPERTIES: Record<FuelType, FuelProperties> = {
     stoich_afr: 9.8,
     ron: 105,
     density: 6.59,
+    ignition: "spark",
+    afr_min: 7.0, // λ 0.71
+    afr_max: 11.0, // λ 1.12
+    afr_default: 8.5, // λ 0.87
   },
   race_gas: {
     label: "Race Gas (C16)",
@@ -47,6 +70,10 @@ export const FUEL_PROPERTIES: Record<FuelType, FuelProperties> = {
     stoich_afr: 15.1,
     ron: 116,
     density: 6.34,
+    ignition: "spark",
+    afr_min: 10.8, // λ 0.72
+    afr_max: 17.0, // λ 1.13
+    afr_default: 13.1, // λ 0.87
   },
   diesel: {
     label: "Diesel",
@@ -54,6 +81,10 @@ export const FUEL_PROPERTIES: Record<FuelType, FuelProperties> = {
     stoich_afr: 14.5,
     ron: 25, // CN ~50 — not knock-limited
     density: 7.09,
+    ignition: "compression",
+    afr_min: 16.0, // λ 1.10 — smoke limit, always lean
+    afr_max: 32.0, // λ 2.21
+    afr_default: 22.0, // λ 1.52
   },
 };
 
@@ -102,6 +133,11 @@ export interface DynoResult {
   peak_torque: number;
   peak_torque_rpm: number;
   peak_cfm: number;
+}
+
+/** Clamp a number to an inclusive range. */
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 // Standard atmospheric conditions (ISA sea level)
@@ -177,22 +213,59 @@ export function boostDensityRatio(boost_psi: number, intercooler_efficiency: num
  * - Finite combustion duration
  * A correction factor of ~0.75–0.82 is applied based on empirical data.
  */
-function thermalEfficiency(cr: number, afr: number, stoich_afr: number): number {
+/**
+ * Combustion efficiency as a function of lambda.
+ *
+ * Spark ignition combusts almost completely near stoichiometry. Rich of about
+ * λ 0.9 the surplus fuel has no oxygen left to burn, so CO, HC and eventually
+ * soot rise: efficiency falls faster than the extra fuel mass can make up for.
+ * That is what puts peak brake power near λ 0.85 rather than at the richest
+ * mixture on offer. Lean of λ 1.05 the flame slows and eventually misfires.
+ *
+ * Compression ignition is a different animal: the charge is always lean, and
+ * efficiency holds high right across the usable range. It falls only at the
+ * smoke limit (too much fuel for the available oxygen) and at extremes of
+ * dilution where the charge stops igniting reliably. Peak power therefore sits
+ * at the smoke limit, while best economy sits leaner — as it does in reality.
+ */
+function combustionEfficiency(
+  lambda: number,
+  ignition: IgnitionType
+): number {
+  if (ignition === "compression") {
+    if (lambda < 1.15) {
+      // Smoke limit — extra fuel simply cannot find oxygen.
+      return clamp(0.97 - (1.15 - lambda) * 0.69, 0.55, 0.98);
+    }
+    // Efficiency peaks around λ 1.8 (best BSFC) and drifts down when very lean.
+    return clamp(0.97 - 0.06 * Math.pow(lambda - 1.8, 2), 0.55, 0.98);
+  }
+
+  if (lambda >= 1) {
+    // Tiny gain just lean of stoich, then slow-burn loss and lean misfire.
+    const near_stoich = Math.min(0.02, (lambda - 1) * 0.4);
+    const lean_loss = 0.9 * Math.pow(Math.max(0, lambda - 1.05), 2);
+    return clamp(0.98 + near_stoich - lean_loss, 0.55, 1.0);
+  }
+
+  // Rich: incomplete combustion grows quadratically once past ~λ 0.9.
+  const deficit = 1 - lambda;
+  return clamp(
+    0.98 - 3.6 * deficit * deficit + 1.4 * Math.pow(deficit, 3),
+    0.55,
+    1.0
+  );
+}
+
+function thermalEfficiency(
+  cr: number,
+  afr: number,
+  fuel: FuelProperties
+): number {
   // Ideal Otto cycle
   const eta_otto = 1 - Math.pow(cr, 1 - GAMMA);
 
-  // Combustion efficiency: peaks near stoich, degrades rich/lean
-  // Based on empirical SFC curves from Heywood Fig 4-32
-  const lambda = afr / stoich_afr;
-  let eta_comb: number;
-  if (lambda < 1.0) {
-    // Rich — linear falloff in combustion efficiency
-    eta_comb = 0.97 - (1.0 - lambda) * 0.25;
-  } else {
-    // Lean — slight improvement then falls off
-    eta_comb = 0.97 + (lambda - 1.0) * 0.05 - Math.pow(lambda - 1.0, 2) * 0.15;
-  }
-  eta_comb = Math.max(0.60, Math.min(0.99, eta_comb));
+  const eta_comb = combustionEfficiency(afr / fuel.stoich_afr, fuel.ignition);
 
   // Ratio of actual indicated work to ideal: ~0.79 (mechanical/thermal factor)
   // This bundles heat transfer, blow-by, finite burn duration
@@ -332,7 +405,7 @@ function simulatePoint(rpm: number, params: EngineParams): DynoPoint {
   const fmf_lbmin = maf_lbmin / params.afr;
 
   // 5. Thermal efficiency (Otto cycle × combustion efficiency × real-engine factor)
-  const eta_th = thermalEfficiency(params.compression_ratio, params.afr, fuel.stoich_afr);
+  const eta_th = thermalEfficiency(params.compression_ratio, params.afr, fuel);
 
   // 6. Indicated Power (HP)
   //    Chemical energy released: Q = fmf [lb/min] × LHV [BTU/lb]
